@@ -1,17 +1,28 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
-func main() {
+type DictResponse struct {
+	Errno int `json:"errno"`
+	Data  []struct {
+		K string `json:"k"`
+		V string `json:"v"`
+	} `json:"data"`
+}
+
+func query(word string) {
 	client := &http.Client{}
-	var data = strings.NewReader(`i=dick&from=AUTO&to=AUTO&smartresult=dict&client=fanyideskweb&salt=16519927951637&sign=d9be0e9a4fd7e0197a9945488b1e934d&lts=1651992795163&bv=b2402fb6d0c7c6d318c684a709d8d03d&doctype=json&version=2.1&keyfrom=fanyi.web&action=FY_BY_REALTlME`)
-	req, err := http.NewRequest("POST", "https://fanyi.youdao.com/translate_o?smartresult=dict&smartresult=rule", data)
+	var data = strings.NewReader("kw=" + word)
+	req, err := http.NewRequest("POST", "https://fanyi.baidu.com/sug", data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -19,9 +30,9 @@ func main() {
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-	req.Header.Set("Cookie", `_ga=GA1.2.1968799229.1643000798; OUTFOX_SEARCH_USER_ID_NCOO=143297926.5785821; OUTFOX_SEARCH_USER_ID="-321987288@10.169.0.102"; JSESSIONID=abcf20_JDZiXPhomS2Ccy; fanyi-ad-id=305838; fanyi-ad-closed=0; ___rl__test__cookies=1651992795158`)
-	req.Header.Set("Origin", "https://fanyi.youdao.com")
-	req.Header.Set("Referer", "https://fanyi.youdao.com/")
+	req.Header.Set("Cookie", "__yjs_duid=1_125a76006bb33972ab86c41f0cbdc5111642161058799; BIDUPSID=4B72196D8D321EA66C44E5B27749C3B7; PSTM=1642310597; BAIDUID=6F712ABC66EDADC8F916587A22EFC64F:FG=1; BDUSS=UExQmlNZVVxanZjfmFaWDhFaVZGOUZDdWxQTU82ZkFXODg5Z1FQaTZtVGM3cGxpRVFBQUFBJCQAAAAAAAAAAAEAAAAeLA85c2Vl1ea1xLrdv-zA1gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANxhcmLcYXJiW; BDUSS_BFESS=UExQmlNZVVxanZjfmFaWDhFaVZGOUZDdWxQTU82ZkFXODg5Z1FQaTZtVGM3cGxpRVFBQUFBJCQAAAAAAAAAAAEAAAAeLA85c2Vl1ea1xLrdv-zA1gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANxhcmLcYXJiW; H_PS_PSSID=; BDORZ=FFFB88E999055A3F8A630C64834BD6D0; Hm_lvt_64ecd82404c51e03dc91cb9e8c025574=1651993645; REALTIME_TRANS_SWITCH=1; FANYI_WORD_SWITCH=1; SOUND_PREFER_SWITCH=1; SOUND_SPD_SWITCH=1; HISTORY_SWITCH=1; BA_HECTOR=040g248h8l840ha4g41h7etkc0q; delPer=0; PSINO=7; BAIDUID_BFESS=6F712ABC66EDADC8F916587A22EFC64F:FG=1; Hm_lpvt_64ecd82404c51e03dc91cb9e8c025574=1651997189; ab_sr=1.0.1_YzQ5YjI5Y2YxMmY2NThlZjBlYmE1NGFmYTllYTM3ODk4MjZmNzczZDcyODZhN2UyM2JlZGZmOTU4Yjg4NDY2ZjMwOWUyMDQxODE2MDIzMjMzMDQwMjVmY2IyNTYxMWM4MDJhNDY5ZWJmMmQyZTM0MzczM2JhNGQ3YjA2ZTk1OTgzOTk0NzJiMjM0ZTIxMjFiZTU0ZGVmMjA4ZDQyMjdmZDRlN2FiMDkxM2ViNGUwM2I4MDdjYmJjZjZjODE0ZmEz")
+	req.Header.Set("Origin", "https://fanyi.baidu.com")
+	req.Header.Set("Referer", "https://fanyi.baidu.com/?aldtype=16047")
 	req.Header.Set("Sec-Fetch-Dest", "empty")
 	req.Header.Set("Sec-Fetch-Mode", "cors")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
@@ -39,5 +50,29 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s\n", bodyText)
+	if resp.StatusCode != 200 {
+		log.Fatal("bad StatusCode:", resp.StatusCode, "body", string(bodyText))
+	}
+	var dictResponse DictResponse
+	err = json.Unmarshal(bodyText, &dictResponse)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//fmt.Printf("%s\n", bodyText)
+	//fmt.Printf("%#v\n", dictResponse)
+	fmt.Println(word)
+	for _, item := range dictResponse.Data {
+		fmt.Println(item.V)
+	}
+}
+
+func main() {
+	fmt.Printf("Please input a word:")
+	reader := bufio.NewReader(os.Stdin)
+	word, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("An error occurred while reading input.", err)
+	}
+	word = strings.TrimSuffix(word, "\r\n")
+	query(word)
 }
